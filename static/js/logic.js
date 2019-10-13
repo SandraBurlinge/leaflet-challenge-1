@@ -1,6 +1,5 @@
 // Store our API endpoint inside queryUrl
-var queryUrl = "https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&starttime=2014-01-01&endtime=" +
-  "2014-01-02&maxlongitude=-69.52148437&minlongitude=-123.83789062&maxlatitude=48.74894534&minlatitude=25.16517337";
+var queryUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
 // Perform a GET request to the query URL
 d3.json(queryUrl, function(data) {
@@ -17,24 +16,51 @@ function createFeatures(earthquakeData) {
       "</h3><hr><p>" + new Date(feature.properties.time) + "</p>");
   }
 
+  function pointToLayer(feature, latlng) {
+    return L.circleMarker(latlng,{
+            stroke: false,
+            fillOpacity: 0.75,
+            color: "white",
+            fillColor: getColor(feature.properties.mag),
+            radius: feature.properties.mag*3
+        });
+  }
+
   // Create a GeoJSON layer containing the features array on the earthquakeData object
   // Run the onEachFeature function once for each piece of data in the array
   var earthquakes = L.geoJSON(earthquakeData, {
-    onEachFeature: onEachFeature
+    onEachFeature: onEachFeature,
+    pointToLayer: pointToLayer
   });
 
   // Sending our earthquakes layer to the createMap function
   createMap(earthquakes);
+
 }
 
 function createMap(earthquakes) {
 
+  function CreateLegend() {
+    var legend = L.control({position: "bottomright"});
+    legend.onAdd = function() {
+      var div = L.DomUtil.create("div","info legend");
+      var labels = ["0-1","1-2","2-3","3-4","4-5","5+"];
+      var legends = [];
+      for(var i=0;i<labels.length;i++){
+        legends.push("<li style=\"list-style-type:none;\"><div style=\"background-color: " + getColor(i) + "\">&nbsp;</div> " +
+        "<div>" + labels[i] + "</div></li>");
+      }
+      div.innerHTML += "<ul class='legend'>" + legends.join("") + "</ul>";
+      return div;
+    };
+    legend.addTo(myMap);
+  }
   // Define streetmap and darkmap layers
   var streetmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
     attribution: "Map data &copy; <a href=\"https://www.openstreetmap.org/\">OpenStreetMap</a> contributors, <a href=\"https://creativecommons.org/licenses/by-sa/2.0/\">CC-BY-SA</a>, Imagery © <a href=\"https://www.mapbox.com/\">Mapbox</a>",
-    maxZoom: 18,
+    maxZoom: 10,
     id: "mapbox.streets",
-    accessToken: "pk.eyJ1IjoiY2h5dTEzMDIiLCJhIjoiY2sxOGh1OWNpMDBkbjNubnRqODVkMTBpeSJ9.JXuvNEjwJuNHgy1BvDvPbA
+    accessToken: API_KEY
   });
 
   var darkmap = L.tileLayer("https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}", {
@@ -70,4 +96,19 @@ function createMap(earthquakes) {
   L.control.layers(baseMaps, overlayMaps, {
     collapsed: false
   }).addTo(myMap);
+
+  CreateLegend();
 }
+
+
+function getColor(mag){
+  switch(parseInt(mag)){
+      case 0: return '#b7f34d';
+      case 1: return '#e1f34d';
+      case 2: return '#f3db4d';
+      case 3: return '#f3ba4d';
+      case 4: return '#f0a76b';
+      default: return '#f06b6b';
+  }
+}
+
